@@ -1,0 +1,249 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  --bg: #10141c;
+  --panel: #1b2130;
+  --border: #2e3648;
+  --accent: #4f9dff;
+  --text: #e8ecf4;
+  --muted: #9aa4b8;
+  --quantum: #b877f0;
+  --entangled: #ffcf5c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.game {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.chips__count {
+  font-weight: 600;
+}
+
+.chips__bar {
+  width: 200px;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.chips__bar-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.area {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.area__title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.area__status {
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.cards-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.card {
+  width: 64px;
+  height: 90px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: #fff;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-weight: 700;
+}
+
+.card--red {
+  color: #c22;
+}
+
+.card__rank {
+  font-size: 1.1rem;
+}
+
+.card__suit {
+  font-size: 1.3rem;
+}
+
+.card--face-down {
+  background: #2a3350;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.card__back {
+  font-size: 1.8rem;
+}
+
+.card--quantum {
+  background: #241a33;
+  border-color: var(--quantum);
+  color: #e9d8ff;
+}
+
+.card--quantum .card__tag {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 0.65rem;
+  color: var(--quantum);
+}
+
+.card--unobserved .card__superposition {
+  font-size: 0.85rem;
+}
+
+.card--observed .card__value {
+  font-size: 1.3rem;
+}
+
+.card--entangled {
+  border-color: var(--entangled);
+  box-shadow: 0 0 0 2px var(--entangled) inset;
+}
+
+.card--clickable {
+  cursor: pointer;
+}
+
+.card--clickable:hover {
+  transform: translateY(-3px);
+  transition: transform 0.1s ease;
+}
+
+.card--selected {
+  outline: 3px solid var(--accent);
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn {
+  background: var(--accent);
+  color: #06182f;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn--primary {
+  background: var(--entangled);
+}
+
+.btn--active {
+  outline: 2px solid #fff;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel__title {
+  margin: 0;
+}
+
+.panel__modes {
+  display: flex;
+  gap: 10px;
+}
+
+.panel__error {
+  color: #ff8080;
+}
+
+.panel__outcome {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.panel--victory {
+  align-items: center;
+  text-align: center;
+  border-color: var(--entangled);
+}
