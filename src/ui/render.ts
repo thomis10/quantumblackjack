@@ -70,12 +70,36 @@ function renderCard(card: Card, opts: { faceDown?: boolean; entangled?: boolean;
   node.appendChild(el('span', 'card__tag', 'Q'));
   if (card.observed) {
     node.classList.add('card--observed');
-    node.appendChild(el('span', 'card__value', String(card.result)));
+    node.appendChild(renderResolvedQuantumValues(card.values, card.chosenSide ?? 0));
   } else {
     node.classList.add('card--unobserved');
     node.appendChild(el('span', 'card__superposition', `[${card.values[0]}|${card.values[1]}]`));
   }
   return node;
+}
+
+/** Shows both original superposed values with a marker over the one it collapsed to. */
+function renderResolvedQuantumValues(values: [number, number], chosenSide: 0 | 1): HTMLElement {
+  const wrap = el('div', 'card__resolved');
+
+  const markerRow = el('div', 'card__marker-row');
+  const marker0 = el('span', 'card__marker');
+  const markerGap = el('span', 'card__marker-gap');
+  const marker1 = el('span', 'card__marker');
+  if (chosenSide === 0) marker0.classList.add('card__marker--active');
+  else marker1.classList.add('card__marker--active');
+  markerRow.append(marker0, markerGap, marker1);
+
+  const valuesRow = el('div', 'card__values-row');
+  const value0 = el('span', 'card__value-option', String(values[0]));
+  const divider = el('span', 'card__values-divider', '|');
+  const value1 = el('span', 'card__value-option', String(values[1]));
+  if (chosenSide === 0) value0.classList.add('card__value-option--chosen');
+  else value1.classList.add('card__value-option--chosen');
+  valuesRow.append(value0, divider, value1);
+
+  wrap.append(markerRow, valuesRow);
+  return wrap;
 }
 
 function renderHeader(state: GameState): HTMLElement {

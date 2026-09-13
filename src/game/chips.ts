@@ -1,6 +1,6 @@
 // Chip reward rules, kept separate from hand-value math.
 
-export const WIN_GOAL = 15;
+export const WIN_GOAL = 10;
 export const ENTANGLEMENT_COST = 1;
 
 export type RoundOutcome = 'win' | 'lose' | 'push';
