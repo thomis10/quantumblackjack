@@ -1,13 +1,22 @@
 // Orchestrates round flow and holds the explicit game state.
-// The dealer only ever draws/plays regular cards (see deck.ts drawRegularCard) -
-// quantum cards are a player-only mechanic.
+// The dealer can be dealt quantum cards, but only measures them once its own
+// turn starts (after the player stands), then continues normal dealer strategy.
 
 import type { Card } from './cards';
-import { createGameDeck, drawCard, drawRegularCard } from './deck';
+import { createGameDeck, drawCard } from './deck';
 import { computeHandValue, computeHandRange, isBust } from './blackjack';
 import type { Entanglement, EntanglementMode } from './quantum';
 import { canEntangle, createEntanglement, observeQuantumCard, resolveAllUnobserved } from './quantum';
 import { determineOutcome, WIN_GOAL, ENTANGLEMENT_COST } from './chips';
+
+/** Draws a card for the dealer, immediately measuring it if it's a quantum card. */
+function drawAndMeasureDealerCard(deck: Card[]): Card | undefined {
+  const card = drawCard(deck);
+  if (card && card.kind === 'quantum') {
+    observeQuantumCard(card, [], []); // dealer cards are never entangled
+  }
+  return card;
+}
 
 export type GameStatus = 'player-turn' | 'round-over' | 'game-over';
 
@@ -55,10 +64,11 @@ export function startRound(state: GameState): GameState {
   const playerHand: Card[] = [];
   const dealerHand: Card[] = [];
   // Standard deal order: player, dealer, player, dealer.
+  // Any quantum cards dealt to the dealer stay unobserved until its turn starts.
   for (let i = 0; i < 2; i++) {
     const playerCard = drawCard(deck);
     if (playerCard) playerHand.push(playerCard);
-    const dealerCard = drawRegularCard(deck); // dealer never receives quantum cards
+    const dealerCard = drawCard(deck);
     if (dealerCard) dealerHand.push(dealerCard);
   }
 
@@ -99,10 +109,12 @@ export function playerStand(state: GameState): GameState {
 
 function finishDealerAndResolve(state: GameState): GameState {
   const deck = [...state.deck];
-  let dealerHand = [...state.dealerHand];
-  // The dealer's hand is always fully known (regular cards only), so this is deterministic.
+  let dealerHand = state.dealerHand.map((c) => ({ ...c }));
+  // The dealer's turn starts here: measure any quantum cards already in its
+  // hand, then keep measuring each new one the instant it's dealt.
+  resolveAllUnobserved(dealerHand, []);
   while (computeHandValue(dealerHand) < 17) {
-    const card = drawRegularCard(deck);
+    const card = drawAndMeasureDealerCard(deck);
     if (!card) break;
     dealerHand = [...dealerHand, card];
   }

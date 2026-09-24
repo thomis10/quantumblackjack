@@ -29,13 +29,13 @@ npm run test     # run the unit test suite (vitest)
 - **Entangle**: for 1 chip, the player links two unobserved quantum cards in *their own hand* as `SAME` (both resolve to the same side/index) or `OPPOSITE` (resolve to opposite sides/indexes). "Side" means position in the superposition, not the numeric value.
 - Observing either half of an entangled pair immediately resolves its partner according to the relationship.
 - Any quantum cards still unobserved when the player stands (or is guaranteed to bust) are collapsed automatically, respecting any active entanglement.
-- The dealer only ever plays regular cards — quantum cards are a player-only mechanic (see "Assumptions").
+- The dealer can also be dealt quantum cards. It never entangles or peeks early — once its turn starts, it measures any unobserved cards already in its hand, then measures each new card the instant it's drawn, and plays out the normal deterministic strategy from there (see "Assumptions").
 
 ## Assumptions
 
 The rules document intentionally leaves some details unspecified. Simplest reasonable choices made:
 
-- **Dealer never draws quantum cards.** The dealer's hand is always fully known and its hit/stand decision is fully deterministic; quantum uncertainty only applies to the player.
+- **The dealer measures quantum cards only once its turn starts.** Any quantum card dealt to the dealer stays unobserved during the player's turn, then is measured the instant the dealer's turn begins (or the instant a new card is drawn during that turn); the dealer never entangles, so from that point its hand is always fully known and its hit/stand decision is fully deterministic.
 - **Observe/Entangle only apply to the player's own hand.** The player has no way to interact with the dealer's cards before the dealer's turn.
 - **Guaranteed-bust short-circuit.** If a hand's *minimum* possible value (assuming every unobserved quantum card resolves to its lowest side) already exceeds 21, the round ends immediately as a bust rather than waiting for a Stand — this can never be avoided by any future observation, so playing on would be meaningless.
 - **A player bust always loses**, even if the dealer's hand would also end up busting after full resolution.
@@ -45,6 +45,6 @@ The rules document intentionally leaves some details unspecified. Simplest reaso
 
 ## Known limitations
 
-- If the deck runs out of regular cards for the dealer mid-round (very unlikely given deck size), the dealer simply stops drawing.
+- If the deck runs out of cards for the dealer mid-round (very unlikely given deck size), the dealer simply stops drawing.
 - No accessibility beyond semantic HTML/button elements; no keyboard shortcuts.
 - Single local player only, no persistence between page reloads.

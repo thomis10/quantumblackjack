@@ -9,12 +9,12 @@ import {
 import { ENTANGLEMENT_COST } from '../game/chips';
 
 describe('engine: dealer cards', () => {
-  it('never deals a quantum card to the dealer, across many rounds', () => {
+  it('always deals the dealer already-measured cards, across many rounds', () => {
     for (let i = 0; i < 50; i++) {
       let state = startRound(createInitialGameState());
       state = playerStand(state); // forces the dealer to draw out its full hand
-      const dealerHasQuantum = state.dealerHand.some((c) => c.kind === 'quantum');
-      expect(dealerHasQuantum).toBe(false);
+      const hasUnmeasuredCard = state.dealerHand.some((c) => c.kind === 'quantum' && !c.observed);
+      expect(hasUnmeasuredCard).toBe(false);
     }
   });
 });
