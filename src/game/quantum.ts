@@ -3,7 +3,7 @@
 // just links two coin flips together. No deeper "physics" than that.
 
 import type { Card, QuantumCard } from './cards';
-import { hasRedCard } from './cards';
+import { countRedCards, hasRedCard } from './cards';
 
 export type EntanglementMode = 'SAME' | 'OPPOSITE';
 
@@ -28,10 +28,17 @@ export interface ObserveValidationResult {
   reason?: string;
 }
 
-/** A quantum card can only be observed while the hand also holds a red (hearts/diamonds) card. */
-export function canObserve(hand: Card[]): ObserveValidationResult {
+/**
+ * A quantum card can only be observed while the hand also holds a red (hearts/diamonds)
+ * card, and each red card only grants one observation (observationsUsed tracks how many
+ * have already been spent this round).
+ */
+export function canObserve(hand: Card[], observationsUsed: number): ObserveValidationResult {
   if (!hasRedCard(hand)) {
     return { ok: false, reason: 'You need a red card (hearts or diamonds) in hand to observe a quantum card.' };
+  }
+  if (observationsUsed >= countRedCards(hand)) {
+    return { ok: false, reason: 'You need another red card to observe again — only one observation per red card.' };
   }
   return { ok: true };
 }

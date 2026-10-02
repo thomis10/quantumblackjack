@@ -45,6 +45,11 @@ export function hasRedCard(hand: Card[]): boolean {
   return hand.some(isRedCard);
 }
 
+/** Each red card in hand grants one quantum observation. */
+export function countRedCards(hand: Card[]): number {
+  return hand.filter(isRedCard).length;
+}
+
 export function createRegularDeck(): RegularCard[] {
   const cards: RegularCard[] = [];
   for (const suit of SUITS) {

@@ -2,7 +2,7 @@
 // turns a TableState + UiState into DOM elements and wires up click handlers.
 
 import type { Card } from '../game/cards';
-import { hasRedCard } from '../game/cards';
+import { countRedCards } from '../game/cards';
 import type { DealerMode, PlayerState, TableState } from '../game/table';
 import { computeHandRange, isBust } from '../game/blackjack';
 import { WIN_GOAL, ENTANGLEMENT_COST } from '../game/chips';
@@ -54,6 +54,8 @@ export interface Handlers {
 interface HandControlsConfig {
   hand: Card[];
   entanglements: Entanglement[];
+  /** Observations already spent this round; one is allowed per red card in hand. */
+  observationsUsed: number;
   /** null means there is no chip cost to entangling (the dealer has no stake). */
   chips: number | null;
   onHit: () => void;
@@ -319,7 +321,8 @@ function renderHandControls(config: HandControlsConfig, ui: UiState): HTMLElemen
   standBtn.addEventListener('click', config.onStand);
 
   const hasUnobservedQuantum = config.hand.some((c) => c.kind === 'quantum' && !c.observed);
-  const canObserveNow = hasRedCard(config.hand);
+  const redCardCount = countRedCards(config.hand);
+  const canObserveNow = config.observationsUsed < redCardCount;
   const observeBtn = el('button', 'btn', 'Observe Quantum Card');
   observeBtn.disabled = !canAct || !hasUnobservedQuantum || !canObserveNow;
   observeBtn.addEventListener('click', config.onStartObserve);
@@ -332,7 +335,11 @@ function renderHandControls(config: HandControlsConfig, ui: UiState): HTMLElemen
   controls.append(hitBtn, standBtn, observeBtn, entangleBtn);
 
   if (hasUnobservedQuantum && !canObserveNow) {
-    controls.append(el('div', 'hint', 'Need a red card (hearts or diamonds) in hand to observe.'));
+    const hintText =
+      redCardCount === 0
+        ? 'Need a red card (hearts or diamonds) in hand to observe.'
+        : 'Used up your red-card observations — get another red card to observe again.';
+    controls.append(el('div', 'hint', hintText));
   }
 
   if (ui.mode === 'observe') {
@@ -422,6 +429,7 @@ function renderPlayerOverlay(
   const handControlsConfig: HandControlsConfig = {
     hand: player.hand,
     entanglements: player.entanglements,
+    observationsUsed: player.observationsUsed,
     chips: player.chips,
     onHit: handlers.onHit,
     onStand: handlers.onStand,
@@ -512,6 +520,7 @@ export function renderTableScreen(
     const dealerHandControlsConfig: HandControlsConfig = {
       hand: table.dealerHand,
       entanglements: table.dealerEntanglements,
+      observationsUsed: table.dealerObservationsUsed,
       chips: null,
       onHit: handlers.onDealerHit,
       onStand: handlers.onDealerStand,

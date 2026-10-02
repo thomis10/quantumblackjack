@@ -31,6 +31,8 @@ export interface PlayerState {
   chips: number;
   entanglements: Entanglement[];
   status: PlayerStatus;
+  /** Observations spent this round; capped at the number of red cards currently in hand. */
+  observationsUsed: number;
   /** Set once the player stands or busts; combined with the dealer's hand once it plays. */
   finalValue: number | null;
   finalBust: boolean;
@@ -49,6 +51,8 @@ export interface TableState {
   /** Id of the first player to ever reach WIN_GOAL this session; never overwritten. */
   firstWinnerId: string | null;
   dealerMode: DealerMode;
+  /** Observations spent by the manual dealer this round; capped at the number of red cards in its hand. */
+  dealerObservationsUsed: number;
 }
 
 function createPlayer(id: string, name: string): PlayerState {
@@ -59,6 +63,7 @@ function createPlayer(id: string, name: string): PlayerState {
     chips: STARTING_CHIPS,
     entanglements: [],
     status: 'waiting',
+    observationsUsed: 0,
     finalValue: null,
     finalBust: false,
     roundResult: null,
@@ -95,6 +100,7 @@ export function dealRound(table: TableState): TableState {
     hand: hands[index],
     entanglements: [],
     status: (index === 0 ? 'active' : 'waiting') as PlayerStatus,
+    observationsUsed: 0,
     finalValue: null,
     finalBust: false,
     roundResult: null,
@@ -105,6 +111,7 @@ export function dealRound(table: TableState): TableState {
     deck,
     dealerHand,
     dealerEntanglements: [],
+    dealerObservationsUsed: 0,
     players,
     activePlayerIndex: 0,
     phase: 'players',
@@ -124,6 +131,7 @@ export function createTable(names: string[], dealerMode: DealerMode = 'auto'): T
     message: '',
     firstWinnerId: null,
     dealerMode,
+    dealerObservationsUsed: 0,
   };
   return dealRound(table);
 }
@@ -203,11 +211,11 @@ export function observeCard(table: TableState, index: number, cardId: string): T
   const hand = player.hand.map((c) => ({ ...c }));
   const card = hand.find((c) => c.id === cardId);
   if (!card || card.kind !== 'quantum' || card.observed) return table;
-  const validation = canObserve(hand);
+  const validation = canObserve(hand, player.observationsUsed);
   if (!validation.ok) return { ...table, message: validation.reason ?? 'Cannot observe this card.' };
   observeQuantumCard(card, hand, player.entanglements);
 
-  let next = updatePlayer(table, index, { hand });
+  let next = updatePlayer(table, index, { hand, observationsUsed: player.observationsUsed + 1 });
   const range = computeHandRange(hand, player.entanglements);
   if (isBust(range.min)) next = finishPlayerTurn(next, index);
   return next;
@@ -320,11 +328,11 @@ export function dealerObserveCard(table: TableState, cardId: string): TableState
   const hand = table.dealerHand.map((c) => ({ ...c }));
   const card = hand.find((c) => c.id === cardId);
   if (!card || card.kind !== 'quantum' || card.observed) return table;
-  const validation = canObserve(hand);
+  const validation = canObserve(hand, table.dealerObservationsUsed);
   if (!validation.ok) return { ...table, message: validation.reason ?? 'Cannot observe this card.' };
   observeQuantumCard(card, hand, table.dealerEntanglements);
 
-  const next = { ...table, dealerHand: hand };
+  const next = { ...table, dealerHand: hand, dealerObservationsUsed: table.dealerObservationsUsed + 1 };
   const range = computeHandRange(hand, table.dealerEntanglements);
   if (isBust(range.min)) return finishDealerTurn(next, hand);
   return next;
