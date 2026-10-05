@@ -84,14 +84,14 @@ export const QUANTUM_CARD_DEFS: QuantumCardDef[] = [
   // { values: [9, 10] },
   // out to middle
   { values: [1, 10] },
-  { values: [2, 9] },
-  { values: [3, 8] },
-  { values: [4, 7] },
+  { values: [1, 10] },
+  { values: [1, 10] },
+  { values: [2, 8] },
   { values: [5, 6] },
   //shifted out to middle
   { values: [5, 9] },
-  { values: [3, 7] },
-  { values: [4, 8] }
+  { values: [1, -10] },
+  { values: [-3, 3] }
 ];
 
 /** How many copies of each quantum card def go into the deck. Tweak to change rarity. */

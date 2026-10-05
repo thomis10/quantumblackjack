@@ -1,0 +1,1 @@
+import{l as e,u as t}from"./cardArt-Dg5MlqP2.js";function n(e){let t=[...e];for(let e=t.length-1;e>0;e--){let n=Math.floor(Math.random()*(e+1));[t[e],t[n]]=[t[n],t[e]]}return t}function r(){return n([...t(),...e()])}function i(e){return e.shift()}export{i as n,n as r,r as t};

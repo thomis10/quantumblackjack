@@ -8,6 +8,7 @@ import { computeHandRange, isBust } from '../game/blackjack';
 import { WIN_GOAL, ENTANGLEMENT_COST } from '../game/chips';
 import type { Entanglement, EntanglementMode } from '../game/quantum';
 import { findEntanglementForCard } from '../game/quantum';
+import { buildCardBackSvg, buildQuantumCardSvg, buildRegularCardSvg } from './cardArt';
 
 export type AppPhase = 'setup' | 'table';
 export type UiMode = 'idle' | 'observe' | 'entangle';
@@ -73,8 +74,6 @@ interface EntanglePanelConfig {
   onCancel: () => void;
 }
 
-const SUIT_SYMBOLS: Record<string, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
-
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -90,16 +89,13 @@ function renderCard(card: Card, opts: { faceDown?: boolean; entangled?: boolean;
   const node = el('div', 'card');
   if (opts.faceDown) {
     node.classList.add('card--face-down');
-    node.appendChild(el('span', 'card__back', '🂠'));
+    node.appendChild(buildCardBackSvg());
     return node;
   }
 
   if (card.kind === 'regular') {
     node.classList.add('card--regular');
-    const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-    if (isRed) node.classList.add('card--red');
-    node.appendChild(el('span', 'card__rank', card.rank));
-    node.appendChild(el('span', 'card__suit', SUIT_SYMBOLS[card.suit]));
+    node.appendChild(buildRegularCardSvg(card.rank, card.suit));
     return node;
   }
 
@@ -107,39 +103,9 @@ function renderCard(card: Card, opts: { faceDown?: boolean; entangled?: boolean;
   node.classList.add('card--quantum');
   if (opts.entangled) node.classList.add('card--entangled');
   if (opts.selected) node.classList.add('card--selected');
-  node.appendChild(el('span', 'card__tag', 'Q'));
-  if (card.observed) {
-    node.classList.add('card--observed');
-    node.appendChild(renderResolvedQuantumValues(card.values, card.chosenSide ?? 0));
-  } else {
-    node.classList.add('card--unobserved');
-    node.appendChild(el('span', 'card__superposition', `[${card.values[0]}|${card.values[1]}]`));
-  }
+  node.classList.add(card.observed ? 'card--observed' : 'card--unobserved');
+  node.appendChild(buildQuantumCardSvg(card.values, card.observed, card.chosenSide ?? 0));
   return node;
-}
-
-/** Shows both original superposed values with a marker over the one it collapsed to. */
-function renderResolvedQuantumValues(values: [number, number], chosenSide: 0 | 1): HTMLElement {
-  const wrap = el('div', 'card__resolved');
-
-  const markerRow = el('div', 'card__marker-row');
-  const marker0 = el('span', 'card__marker');
-  const markerGap = el('span', 'card__marker-gap');
-  const marker1 = el('span', 'card__marker');
-  if (chosenSide === 0) marker0.classList.add('card__marker--active');
-  else marker1.classList.add('card__marker--active');
-  markerRow.append(marker0, markerGap, marker1);
-
-  const valuesRow = el('div', 'card__values-row');
-  const value0 = el('span', 'card__value-option', String(values[0]));
-  const divider = el('span', 'card__values-divider', '|');
-  const value1 = el('span', 'card__value-option', String(values[1]));
-  if (chosenSide === 0) value0.classList.add('card__value-option--chosen');
-  else value1.classList.add('card__value-option--chosen');
-  valuesRow.append(value0, divider, value1);
-
-  wrap.append(markerRow, valuesRow);
-  return wrap;
 }
 
 function renderChipsBar(chips: number): HTMLElement {
