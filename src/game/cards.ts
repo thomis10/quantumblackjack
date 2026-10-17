@@ -25,6 +25,7 @@ export interface QuantumCard {
   id: string;
   /** The two superposed values. Index 0/1 is the "side" referenced by entanglement. */
   values: [number, number];
+  suit?: QuantumSuit;
   observed: boolean;
   /** Which side (0 or 1) was chosen once observed. */
   chosenSide?: 0 | 1;
@@ -60,9 +61,12 @@ export function createRegularDeck(): RegularCard[] {
   return cards;
 }
 
+export type QuantumSuit = Suit | 'joker';
+
 /** The starting set of quantum cards. Add more entries here to expand the game later. */
 export interface QuantumCardDef {
   values: [number, number];
+  suit?: QuantumSuit;
 }
 
 export const QUANTUM_CARD_DEFS: QuantumCardDef[] = [
@@ -83,15 +87,30 @@ export const QUANTUM_CARD_DEFS: QuantumCardDef[] = [
   // { values: [8, 10] },
   // { values: [9, 10] },
   // out to middle
-  { values: [1, 10] },
-  { values: [1, 10] },
-  { values: [1, 10] },
-  { values: [2, 8] },
-  { values: [5, 6] },
-  //shifted out to middle
-  { values: [5, 9] },
-  { values: [1, -10] },
-  { values: [-3, 3] }
+  // { values: [1, 10] },
+  // { values: [1, 10] },
+  // { values: [1, 10] },
+  // { values: [2, 8] },
+  // { values: [5, 6] },
+  // //shifted out to middle
+  // { values: [5, 9] },
+  // { values: [1, -10] },
+  // { values: [-3, 3] }
+  { values: [1, 10], suit: 'hearts' },
+  { values: [1, 10], suit: 'diamonds' },
+  { values: [10, 1], suit: 'clubs' },
+  { values: [10, 1], suit: 'spades' },
+  { values: [2, 10], suit: 'hearts' },
+  { values: [10, 3], suit: 'diamonds' },
+  { values: [4, 10], suit: 'clubs' },
+  { values: [10, 5], suit: 'spades' },
+  { values: [2, 8], suit: 'hearts' },
+  { values: [2, 6], suit: 'diamonds' },
+  { values: [-3, 3], suit: 'clubs' },
+  { values: [-8, 5], suit: 'spades' },
+  { values: [1, -10], suit: 'joker' },
+  { values: [1, -10], suit: 'joker' },
+  
 ];
 
 /** How many copies of each quantum card def go into the deck. Tweak to change rarity. */
@@ -105,6 +124,7 @@ export function createQuantumDeck(copiesPerDef = QUANTUM_COPIES_PER_DEF): Quantu
         kind: 'quantum',
         id: `Q-${def.values[0]}-${def.values[1]}-${defIndex}-${copy}`,
         values: [...def.values],
+        suit: def.suit,
         observed: false,
       });
     }
