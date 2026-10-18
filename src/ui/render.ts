@@ -104,7 +104,7 @@ function renderCard(card: Card, opts: { faceDown?: boolean; entangled?: boolean;
   if (opts.entangled) node.classList.add('card--entangled');
   if (opts.selected) node.classList.add('card--selected');
   node.classList.add(card.observed ? 'card--observed' : 'card--unobserved');
-  node.appendChild(buildQuantumCardSvg(card.values, card.observed, card.chosenSide ?? 0));
+  node.appendChild(buildQuantumCardSvg(card.values, card.observed, card.chosenSide ?? 0, card.suit));
   return node;
 }
 

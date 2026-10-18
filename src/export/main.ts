@@ -46,7 +46,8 @@ function buildExportEntries(): ExportEntry[] {
   }
   QUANTUM_CARD_DEFS.forEach((def) => {
     const [v0, v1] = def.values;
-    entries.push({ path: `quantum/${v0}-${v1}.png`, buildSvg: () => buildQuantumCardSvg(def.values, false, 0) });
+    const suit = def.suit ?? 'card';
+    entries.push({ path: `quantum/${suit}-${v0}-${v1}.png`, buildSvg: () => buildQuantumCardSvg(def.values, false, 0, def.suit) });
   });
   entries.push({ path: 'back.png', buildSvg: () => buildCardBackSvg() });
   return entries;

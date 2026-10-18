@@ -1,7 +1,8 @@
 // Shared inline-SVG card face builders. Used by the live game renderer and by
 // the deck export page so both draw from the exact same visual source.
 
-import type { Rank, Suit } from '../game/cards';
+import type { Rank, Suit, QuantumSuit } from '../game/cards';
+import { QUANTUM_CARD_DEFS } from '../game/cards';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CARD_W = 64;
@@ -204,11 +205,11 @@ export interface QuantumColorOverrides {
   waveNegative?: string;
 }
 
-/**
- * Corner "wavefunction" icon: a plain circle plus a wavy circle whose peak
- * count equals the card's value, ported from circle_waves_AQT_QuantumBlackJack.py.
- * The wave is colored red for negative values, green otherwise.
- */
+/*
+// ============================================================================
+// OLD QUANTUM CARD CODE (COMMENTED OUT AS REQUESTED)
+// ============================================================================
+
 export function buildCornerValueIconSvg(value: number, colors?: QuantumColorOverrides): SVGGElement {
   const R = 4;
   const amplitude = 0.9;
@@ -288,8 +289,7 @@ function buildQuantumCenterText(values: [number, number], observed: boolean, cho
   return g;
 }
 
-/** Quantum card face: diagonal value-colored split, corner wavefunction icons, center value text. */
-export function buildQuantumCardSvg(
+export function buildOldQuantumCardSvg(
   values: [number, number],
   observed: boolean,
   chosenSide: 0 | 1,
@@ -312,6 +312,281 @@ export function buildQuantumCardSvg(
   iconBR.appendChild(iconBRInner);
   svg.appendChild(iconBR);
   svg.appendChild(buildQuantumCenterText(values, observed, chosenSide));
+  return svg;
+}
+*/
+
+// ============================================================================
+// NEW QUANTUM CARD ART:
+// - Traditional playing card clean white background
+// - Top-left corner: card value + suit
+// - Bottom-right corner: other value + same suit (rotated 180°)
+// - Diagonally from bottom-left to top-right:
+//   * Red standing wave envelope with as many nodes as top-left value
+//   * Green standing wave envelope with as many nodes as bottom-right value
+//   * Central string axis and node dots at zero crossings
+// ============================================================================
+
+export const QUANTUM_SUIT_COLORS: Record<QuantumSuit, string> = {
+  hearts: '#d32f2f',
+  diamonds: '#d32f2f',
+  clubs: '#1a1a1a',
+  spades: '#1a1a1a',
+  joker: '#7c3aed',
+};
+
+const JOKER_STAR_D =
+  'M5 0.6 L6.35 3.33 L9.36 3.77 L7.18 5.89 L7.7 8.89 L5 7.47 L2.3 8.89 L2.82 5.89 L0.64 3.77 L3.65 3.33 Z';
+
+function buildQuantumSuitShape(suit: QuantumSuit, color: string): SVGElement {
+  if (suit === 'joker') {
+    return svgEl('path', { d: JOKER_STAR_D, fill: color });
+  }
+  return buildSuitShape(suit, color);
+}
+
+function buildQuantumSuitGlyph(suit: QuantumSuit, size: number, color: string): SVGGElement {
+  const g = svgEl('g', { transform: `translate(${-size / 2},${-size / 2}) scale(${size / 10})` });
+  g.appendChild(buildQuantumSuitShape(suit, color));
+  return g;
+}
+
+function buildQuantumCornerIndex(
+  value: number,
+  suit: QuantumSuit,
+  waveColor: string,
+  highlighted: boolean = false,
+  dimmed: boolean = false,
+): SVGGElement {
+  const g = svgEl('g', {
+    transform: 'translate(4.5, 4.5)',
+    opacity: dimmed ? '0.35' : '1',
+  });
+
+  const suitColor = QUANTUM_SUIT_COLORS[suit] ?? '#1a1a1a';
+  const valStr = String(value);
+  const fontSize = valStr.length >= 3 ? '7' : valStr.length === 2 ? '8' : '9.5';
+  const boxWidth = valStr.length >= 3 ? 14 : valStr.length === 2 ? 12 : 10.5;
+  const boxHeight = 11;
+  const boxX = 4.5 - boxWidth / 2;
+  const boxY = -0.5;
+
+  // Border box with corresponding wave color to pair the number with its wave
+  const box = svgEl('rect', {
+    x: boxX.toFixed(2),
+    y: boxY.toFixed(2),
+    width: boxWidth.toFixed(2),
+    height: String(boxHeight),
+    rx: '2.5',
+    fill: waveColor,
+    'fill-opacity': highlighted ? '0.22' : '0.07',
+    stroke: waveColor,
+    'stroke-width': highlighted ? '1.4' : '1.0',
+  });
+  g.appendChild(box);
+
+  const text = svgEl('text', {
+    x: '4.5',
+    y: '5.2',
+    'text-anchor': 'middle',
+    'dominant-baseline': 'central',
+    'font-size': fontSize,
+    'font-weight': '800',
+    'font-family': 'system-ui, -apple-system, sans-serif',
+    fill: suitColor,
+  });
+  text.textContent = valStr;
+  g.appendChild(text);
+
+  const suitWrap = svgEl('g', { transform: 'translate(4.5, 16.5)' });
+  suitWrap.appendChild(buildQuantumSuitGlyph(suit, 7, suitColor));
+  g.appendChild(suitWrap);
+
+  return g;
+}
+
+interface StandingWaveParams {
+  value: number;
+  color: string;
+  amplitude: number;
+  highlighted?: boolean;
+  dimmed?: boolean;
+}
+
+function buildStandingWave(params: StandingWaveParams): SVGGElement {
+  const { value, color, amplitude, highlighted = false, dimmed = false } = params;
+  const nodes = Math.max(1, Math.abs(value));
+
+  const g = svgEl('g', {
+    opacity: dimmed ? '0.18' : '1',
+    style: highlighted ? `filter: drop-shadow(0 0 2px ${color});` : '',
+  });
+
+  const x0 = 4;
+  const y0 = 86;
+  const x1 = 60;
+  const y1 = 4;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const L = Math.hypot(dx, dy);
+  const nx = -dy / L;
+  const ny = dx / L;
+
+  const samples = Math.max(80, nodes * 16);
+  const sign = value < 0 ? -1 : 1;
+
+  // Single sine wave across the diagonal (inverted for negative values)
+  const wavePts: string[] = [];
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const bx = x0 + t * dx;
+    const by = y0 + t * dy;
+    const wave = sign * amplitude * Math.sin(nodes * Math.PI * t);
+    wavePts.push(`${(bx + wave * nx).toFixed(2)},${(by + wave * ny).toFixed(2)}`);
+  }
+
+  const wavePath = svgEl('path', {
+    d: `M ${wavePts.join(' L ')}`,
+    fill: 'none',
+    stroke: color,
+    'stroke-width': highlighted ? '1.8' : '1.3',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+  });
+  g.appendChild(wavePath);
+
+  // Node markers along diagonal baseline
+  const nodeRadius = amplitude > 5 ? 1.0 : 0.85;
+  for (let k = 0; k <= nodes; k++) {
+    const t = k / nodes;
+    const nxPos = (x0 + t * dx).toFixed(2);
+    const nyPos = (y0 + t * dy).toFixed(2);
+    g.appendChild(
+      svgEl('circle', {
+        cx: nxPos,
+        cy: nyPos,
+        r: String(nodeRadius),
+        fill: color,
+      }),
+    );
+  }
+
+  return g;
+}
+
+function resolveQuantumSuit(values: [number, number], suit?: QuantumSuit): QuantumSuit {
+  if (suit) return suit;
+  const match = QUANTUM_CARD_DEFS.find(
+    (def) => def.values[0] === values[0] && def.values[1] === values[1],
+  );
+  return match?.suit ?? 'spades';
+}
+
+/**
+ * Quantum card face:
+ * - White card background matching traditional playing cards
+ * - Top-left corner: value 0 + suit
+ * - Bottom-right corner: value 1 + same suit (rotated 180°)
+ * - Diagonally from bottom-left to top-right:
+ *   * Red standing wave with as many nodes as the top-left value
+ *   * Green standing wave with as many nodes as the bottom-right value
+ */
+export function buildQuantumCardSvg(
+  values: [number, number],
+  observed: boolean = false,
+  chosenSide: 0 | 1 = 0,
+  suitOrOverrides?: QuantumSuit | QuantumColorOverrides,
+  colorOverrides?: QuantumColorOverrides,
+): SVGSVGElement {
+  const svg = newSvgRoot();
+
+  let suit: QuantumSuit | undefined;
+  let overrides = colorOverrides;
+  if (typeof suitOrOverrides === 'string') {
+    suit = suitOrOverrides;
+  } else if (typeof suitOrOverrides === 'object' && suitOrOverrides !== null) {
+    overrides = suitOrOverrides;
+  }
+
+  const resolvedSuit = resolveQuantumSuit(values, suit);
+  const redColor = overrides?.waveNegative ?? WAVE_NEGATIVE_COLOR;
+  const greenColor = overrides?.wavePositive ?? WAVE_POSITIVE_COLOR;
+
+  // 1. Clean white playing-card background
+  svg.appendChild(
+    svgEl('rect', {
+      x: '0.5',
+      y: '0.5',
+      width: `${CARD_W - 1}`,
+      height: `${CARD_H - 1}`,
+      rx: '7',
+      fill: '#ffffff',
+      stroke: '#e2e8f0',
+      'stroke-width': '1',
+    }),
+  );
+
+  // 2. Diagonal string baseline
+  svg.appendChild(
+    svgEl('line', {
+      x1: '4',
+      y1: '86',
+      x2: '60',
+      y2: '4',
+      stroke: '#dbe0ea',
+      'stroke-width': '0.75',
+      'stroke-dasharray': '2 2',
+      'stroke-linecap': 'round',
+    }),
+  );
+
+  // 3. Standing waves along the diagonal
+  // Red wave: top-left value (side 0)
+  svg.appendChild(
+    buildStandingWave({
+      value: values[0],
+      color: redColor,
+      amplitude: 5.2,
+      highlighted: observed && chosenSide === 0,
+      dimmed: observed && chosenSide === 1,
+    }),
+  );
+
+  // Green wave: bottom-right value (side 1)
+  svg.appendChild(
+    buildStandingWave({
+      value: values[1],
+      color: greenColor,
+      amplitude: 5.2,
+      highlighted: observed && chosenSide === 1,
+      dimmed: observed && chosenSide === 0,
+    }),
+  );
+
+  // 4. Top-left corner index (value 0 framed in red wave border box + suit)
+  svg.appendChild(
+    buildQuantumCornerIndex(
+      values[0],
+      resolvedSuit,
+      redColor,
+      observed && chosenSide === 0,
+      observed && chosenSide === 1,
+    ),
+  );
+
+  // 5. Bottom-right corner index (value 1 framed in green wave border box + suit, rotated 180°)
+  const brWrap = svgEl('g', { transform: `rotate(180 ${CARD_W / 2} ${CARD_H / 2})` });
+  brWrap.appendChild(
+    buildQuantumCornerIndex(
+      values[1],
+      resolvedSuit,
+      greenColor,
+      observed && chosenSide === 1,
+      observed && chosenSide === 0,
+    ),
+  );
+  svg.appendChild(brWrap);
+
   return svg;
 }
 
