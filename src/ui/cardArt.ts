@@ -57,14 +57,106 @@ function buildSuitGlyph(suit: Suit, size: number, color: string): SVGGElement {
   return g;
 }
 
+/**
+ * Measurement meter symbol (analog gauge arc + arrow pointing up-right).
+ * Recreated from the quantum measurement operator icon and displayed
+ * underneath the corner rank and suit on red cards (hearts/diamonds).
+ */
+export function buildMeasurementMeterSvg(
+  cx = 4,
+  cy = 23,
+  R = 1,
+  strokeW = 0.7,
+  color = '#111',
+): SVGGElement {
+  const g = svgEl('g', { class: 'card__measurement-meter' });
+
+  // Semicircular gauge arc: -175° to -5° curving upwards over the center
+  const startRad = (-175 * Math.PI) / 180;
+  const endRad = (-5 * Math.PI) / 180;
+  const x1 = (cx + R * Math.cos(startRad)).toFixed(2);
+  const y1 = (cy + R * Math.sin(startRad)).toFixed(2);
+  const x2 = (cx + R * Math.cos(endRad)).toFixed(2);
+  const y2 = (cy + R * Math.sin(endRad)).toFixed(2);
+  const arcD = `M ${x1} ${y1} A ${R} ${R} 0 0 1 ${x2} ${y2}`;
+
+  // Needle pointing up and right at -54.7°
+  const angleRad = (-54.7 * Math.PI) / 180;
+  const dirX = Math.cos(angleRad);
+  const dirY = Math.sin(angleRad);
+  const perpX = -dirY;
+  const perpY = dirX;
+
+  // Needle bottom start position
+  const startX = (cx - 0.245 * R).toFixed(2);
+  const startY = (cy + 0.098 * R).toFixed(2);
+
+  // Arrowhead tip and dimensions
+  const tipX = cx + 0.883 * R;
+  const tipY = cy - 1.488 * R;
+  const headLen = 0.48 * R;
+  const headHw = 0.235 * R;
+  const notchLen = 0.38 * R;
+
+  const barb1X = (tipX - headLen * dirX - headHw * perpX).toFixed(2);
+  const barb1Y = (tipY - headLen * dirY - headHw * perpY).toFixed(2);
+  const barb2X = (tipX - headLen * dirX + headHw * perpX).toFixed(2);
+  const barb2Y = (tipY - headLen * dirY + headHw * perpY).toFixed(2);
+  const notchX = (tipX - notchLen * dirX).toFixed(2);
+  const notchY = (tipY - notchLen * dirY).toFixed(2);
+
+  const arrowD = `M ${tipX.toFixed(2)} ${tipY.toFixed(2)} L ${barb2X} ${barb2Y} L ${notchX} ${notchY} L ${barb1X} ${barb1Y} Z`;
+
+  g.appendChild(
+    svgEl('path', {
+      d: arcD,
+      fill: 'none',
+      stroke: color,
+      'stroke-width': strokeW.toFixed(2),
+      'stroke-linecap': 'butt',
+    }),
+  );
+
+  g.appendChild(
+    svgEl('line', {
+      x1: startX,
+      y1: startY,
+      x2: notchX,
+      y2: notchY,
+      stroke: color,
+      'stroke-width': strokeW.toFixed(2),
+      'stroke-linecap': 'butt',
+    }),
+  );
+
+  g.appendChild(
+    svgEl('path', {
+      d: arrowD,
+      fill: color,
+      stroke: color,
+      'stroke-width': '0.1',
+      'stroke-linejoin': 'round',
+    }),
+  );
+
+  return g;
+}
+
 function buildCornerIndex(rank: Rank, suit: Suit, color: string): SVGGElement {
   const g = svgEl('g', { transform: 'translate(5,5)' });
   const text = svgEl('text', { x: '0', y: '8', 'font-size': '9', 'font-weight': '700', fill: color });
   text.textContent = rank;
   g.appendChild(text);
-  const glyphWrap = svgEl('g', { transform: 'translate(4,16)' });
-  glyphWrap.appendChild(buildSuitGlyph(suit, 7, color));
+  const glyphWrap = svgEl('g', { transform: 'translate(4,15.5)' });
+  glyphWrap.appendChild(buildSuitGlyph(suit, 6.5, color));
   g.appendChild(glyphWrap);
+
+  // Red cards (hearts/diamonds) grant quantum observations: show the measurement meter
+  // indicator underneath the corner rank and suit.
+  if (suit === 'hearts' || suit === 'diamonds') {
+    g.appendChild(buildMeasurementMeterSvg(4, 23, 2.5, 0.7, '#111'));
+  }
+
   return g;
 }
 
@@ -154,16 +246,21 @@ export function buildRegularCardSvg(rank: Rank, suit: Suit): SVGSVGElement {
   const color = SUIT_COLORS[suit];
   const count = rank === 'A' ? 1 : Number(rank);
   const pipSize = count === 1 ? 20 : 11;
+
+  // Corner indices with number, suit, and (for red cards) measurement meter underneath.
+  svg.appendChild(buildCornerIndex(rank, suit, color));
+  const brCorner = svgEl('g', { transform: `rotate(180 ${CARD_W / 2} ${CARD_H / 2})` });
+  brCorner.appendChild(buildCornerIndex(rank, suit, color));
+  svg.appendChild(brCorner);
+
+  // Center pips rendered on top
   for (const pip of PIP_LAYOUTS[count]) {
     const transform = `translate(${pip.x * CARD_W},${pip.y * CARD_H})${pip.flipped ? ' rotate(180)' : ''}`;
     const wrap = svgEl('g', { transform });
     wrap.appendChild(buildSuitGlyph(suit, pipSize, color));
     svg.appendChild(wrap);
   }
-  svg.appendChild(buildCornerIndex(rank, suit, color));
-  const brCorner = svgEl('g', { transform: `rotate(180 ${CARD_W / 2} ${CARD_H / 2})` });
-  brCorner.appendChild(buildCornerIndex(rank, suit, color));
-  svg.appendChild(brCorner);
+
   return svg;
 }
 
