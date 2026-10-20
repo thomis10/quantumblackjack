@@ -1,4 +1,4 @@
-// Dev-only deck export tool: rasterizes every unique card face to PNG and
+// Dev-only deck export tool: rasterizes every unique card face to JPEG and
 // zips them for download. Not linked from the normal game UI.
 
 import '../style.css';
@@ -10,7 +10,7 @@ const CARD_W = 64;
 const CARD_H = 90;
 const EXPORT_SCALE = 8; // raster resolution multiplier over the card's native SVG size
 
-async function svgToPngBlob(svg: SVGSVGElement): Promise<Blob> {
+async function svgToJpgBlob(svg: SVGSVGElement): Promise<Blob> {
   svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   const svgText = new XMLSerializer().serializeToString(svg);
   const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
@@ -27,10 +27,13 @@ async function svgToPngBlob(svg: SVGSVGElement): Promise<Blob> {
   canvas.height = CARD_H * EXPORT_SCALE;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context unavailable');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-  if (!blob) throw new Error('Failed to encode PNG');
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+  if (!blob) throw new Error('Failed to encode JPEG');
   return blob;
 }
 
@@ -39,17 +42,17 @@ interface ExportEntry {
   buildSvg: () => SVGSVGElement;
 }
 
-function buildExportEntries(): ExportEntry[] {
+export function buildExportEntries(): ExportEntry[] {
   const entries: ExportEntry[] = [];
   for (const card of createRegularDeck()) {
-    entries.push({ path: `regular/${card.suit}-${card.rank}.png`, buildSvg: () => buildRegularCardSvg(card.rank, card.suit) });
+    entries.push({ path: `regular/${card.suit}-${card.rank}.jpg`, buildSvg: () => buildRegularCardSvg(card.rank, card.suit) });
   }
   QUANTUM_CARD_DEFS.forEach((def) => {
     const [v0, v1] = def.values;
     const suit = def.suit ?? 'card';
-    entries.push({ path: `quantum/${suit}-${v0}-${v1}.png`, buildSvg: () => buildQuantumCardSvg(def.values, false, 0, def.suit) });
+    entries.push({ path: `quantum/${suit}-${v0}-${v1}.jpg`, buildSvg: () => buildQuantumCardSvg(def.values, false, 0, def.suit) });
   });
-  entries.push({ path: 'back.png', buildSvg: () => buildCardBackSvg() });
+  entries.push({ path: 'back.jpg', buildSvg: () => buildCardBackSvg() });
   return entries;
 }
 
@@ -75,7 +78,7 @@ function renderPage(): void {
 
   const hint = document.createElement('p');
   hint.className = 'hint';
-  hint.textContent = 'Generates a ZIP of every regular card, every quantum value pair, and the card back as PNGs.';
+  hint.textContent = 'Generates a ZIP of every regular card, every quantum value pair, and the card back as JPGs.';
   wrap.appendChild(hint);
 
   const button = document.createElement('button');
@@ -94,7 +97,7 @@ function renderPage(): void {
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
       status.textContent = `Rendering ${i + 1} / ${entries.length}: ${entry.path}`;
-      const blob = await svgToPngBlob(entry.buildSvg());
+      const blob = await svgToJpgBlob(entry.buildSvg());
       zip.file(entry.path, blob);
     }
     status.textContent = 'Zipping…';
@@ -107,4 +110,6 @@ function renderPage(): void {
   app.appendChild(wrap);
 }
 
-renderPage();
+if (typeof document !== 'undefined') {
+  renderPage();
+}
