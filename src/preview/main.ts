@@ -27,10 +27,8 @@ function currentOverrides(): QuantumColorOverrides {
   return { valueColors: state.valueColors, wavePositive: state.wavePositive, waveNegative: state.waveNegative };
 }
 
-function pickRandomDefs(count: number): [number, number][] {
-  return shuffle(QUANTUM_CARD_DEFS)
-    .slice(0, count)
-    .map((def) => def.values);
+function pickRandomDefs(count: number) {
+  return shuffle(QUANTUM_CARD_DEFS).slice(0, count);
 }
 
 let currentDefs = pickRandomDefs(3);
@@ -62,11 +60,11 @@ function scheduleSave(statusEl: HTMLElement): void {
 
 function renderCardPreviews(container: HTMLElement): void {
   container.innerHTML = '';
-  for (const values of currentDefs) {
+  for (const def of currentDefs) {
     const slot = document.createElement('div');
     slot.className = 'card card--quantum';
-    slot.style.cssText = 'width:120px;height:168px;border:2px solid #fff;';
-    slot.appendChild(buildQuantumCardSvg(values, false, 0, currentOverrides()));
+    slot.style.cssText = 'width:120px;height:168px;border:2px solid #7c3aed;border-radius:10px;';
+    slot.appendChild(buildQuantumCardSvg(def.values, false, 0, def.suit, currentOverrides()));
     container.appendChild(slot);
   }
 }

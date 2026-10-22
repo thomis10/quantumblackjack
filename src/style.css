@@ -305,9 +305,10 @@ body {
 }
 
 .card--quantum {
-  background: #241a33;
-  border-color: #fff;
-  color: #e9d8ff;
+  background: #ffffff;
+  border-color: #7c3aed;
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.25);
+  color: #111;
   overflow: hidden;
 }
 
