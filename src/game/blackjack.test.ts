@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeHandRange, computeHandValue, isBust, resolveHandFavorably } from '../game/blackjack';
 import type { QuantumCard, RegularCard } from '../game/cards';
+import { createEntanglement } from '../game/quantum';
 
 function reg(rank: RegularCard['rank'], suit: RegularCard['suit'] = 'spades'): RegularCard {
   return { kind: 'regular', id: `${rank}-${suit}-${Math.random()}`, rank, suit };
@@ -61,5 +62,27 @@ describe('resolveHandFavorably (standing in superposition)', () => {
     const range = computeHandRange(hand, []);
     resolveHandFavorably(hand, []);
     expect(range.values).toContain(computeHandValue(hand));
+  });
+
+  it('computes a two-branch range for a three-card entanglement chain', () => {
+    const q1 = quantum([3, 7], 'q1');
+    const q2 = quantum([2, 9], 'q2');
+    const q3 = quantum([1, 8], 'q3');
+    const entanglements = [createEntanglement(q1, q2, 'SAME'), createEntanglement(q2, q3, 'OPPOSITE')];
+
+    const range = computeHandRange([q1, q2, q3], entanglements);
+    expect(range.values).toEqual([13, 17]);
+    expect(range.isCertain).toBe(false);
+  });
+
+  it('resolves chained entanglement to the smallest bust when no safe branch exists', () => {
+    const base = reg('10');
+    const q1 = quantum([3, 7], 'q1');
+    const q2 = quantum([2, 9], 'q2');
+    const q3 = quantum([1, 8], 'q3');
+    const entanglements = [createEntanglement(q1, q2, 'SAME'), createEntanglement(q2, q3, 'OPPOSITE')];
+
+    resolveHandFavorably([base, q1, q2, q3], entanglements);
+    expect(computeHandValue([base, q1, q2, q3])).toBe(23);
   });
 });

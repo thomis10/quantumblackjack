@@ -14,6 +14,11 @@ export interface Entanglement {
   mode: EntanglementMode;
 }
 
+interface Neighbor {
+  id: string;
+  parity: 0 | 1;
+}
+
 export function isQuantumCard(card: Card | undefined): card is QuantumCard {
   return !!card && card.kind === 'quantum';
 }
@@ -26,6 +31,47 @@ export interface EntangleValidationResult {
 export interface ObserveValidationResult {
   ok: boolean;
   reason?: string;
+}
+
+function modeParity(mode: EntanglementMode): 0 | 1 {
+  return mode === 'SAME' ? 0 : 1;
+}
+
+function buildEntanglementGraph(entanglements: Entanglement[]): Map<string, Neighbor[]> {
+  const graph = new Map<string, Neighbor[]>();
+  const addEdge = (from: string, to: string, parity: 0 | 1): void => {
+    const list = graph.get(from);
+    if (list) list.push({ id: to, parity });
+    else graph.set(from, [{ id: to, parity }]);
+  };
+
+  for (const entanglement of entanglements) {
+    const parity = modeParity(entanglement.mode);
+    addEdge(entanglement.cardAId, entanglement.cardBId, parity);
+    addEdge(entanglement.cardBId, entanglement.cardAId, parity);
+  }
+  return graph;
+}
+
+function findRelativeParity(entanglements: Entanglement[], startId: string, targetId: string): 0 | 1 | undefined {
+  if (startId === targetId) return 0;
+  const graph = buildEntanglementGraph(entanglements);
+  const queue: Array<{ id: string; parity: 0 | 1 }> = [{ id: startId, parity: 0 }];
+  const seen = new Set<string>([startId]);
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const neighbors = graph.get(current.id) ?? [];
+    for (const neighbor of neighbors) {
+      const nextParity = (current.parity ^ neighbor.parity) as 0 | 1;
+      if (neighbor.id === targetId) return nextParity;
+      if (seen.has(neighbor.id)) continue;
+      seen.add(neighbor.id);
+      queue.push({ id: neighbor.id, parity: nextParity });
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -46,6 +92,7 @@ export function canObserve(hand: Card[], observationsUsed: number): ObserveValid
 export function canEntangle(
   cardA: Card | undefined,
   cardB: Card | undefined,
+  mode: EntanglementMode,
   existing: Entanglement[],
   chips: number,
 ): EntangleValidationResult {
@@ -57,10 +104,30 @@ export function canEntangle(
   if (cardA.observed || cardB.observed) {
     return { ok: false, reason: 'Observed cards cannot be entangled.' };
   }
-  const alreadyEntangled = (id: string) => existing.some((e) => e.cardAId === id || e.cardBId === id);
-  if (alreadyEntangled(cardA.id) || alreadyEntangled(cardB.id)) {
-    return { ok: false, reason: 'A card can only be part of one entanglement at a time.' };
+
+  const pairAlreadyLinked = existing.some(
+    (e) =>
+      (e.cardAId === cardA.id && e.cardBId === cardB.id) ||
+      (e.cardAId === cardB.id && e.cardBId === cardA.id),
+  );
+  if (pairAlreadyLinked) {
+    return { ok: false, reason: 'Those two cards are already directly entangled.' };
   }
+
+  const impliedParity = findRelativeParity(existing, cardA.id, cardB.id);
+  if (impliedParity !== undefined) {
+    if (impliedParity === modeParity('SAME') && mode === 'SAME') {
+      return { ok: false, reason: 'Those cards are already indirectly linked as SAME.' };
+    }
+    if (impliedParity === modeParity('OPPOSITE') && mode === 'OPPOSITE') {
+      return { ok: false, reason: 'Those cards are already indirectly linked as OPPOSITE.' };
+    }
+    return {
+      ok: false,
+      reason: 'This entanglement would contradict existing links in the chain.',
+    };
+  }
+
   if (chips < 1) {
     return { ok: false, reason: 'Entanglement costs 1 chip.' };
   }
@@ -92,17 +159,37 @@ export function observeQuantumCard(
 ): void {
   if (card.observed) return; // a card can never be observed twice
   const side: 0 | 1 = forcedSide !== undefined ? forcedSide : Math.random() < 0.5 ? 0 : 1;
-  card.observed = true;
-  card.chosenSide = side;
-  card.result = card.values[side];
+  const graph = buildEntanglementGraph(entanglements);
+  const quantumById = new Map<string, QuantumCard>();
+  quantumById.set(card.id, card);
+  for (const c of allCards) {
+    if (isQuantumCard(c)) quantumById.set(c.id, c);
+  }
 
-  const entanglement = findEntanglementForCard(entanglements, card.id);
-  if (entanglement) {
-    const partnerId = findPartnerId(entanglement, card.id);
-    const partner = allCards.find((c) => c.id === partnerId);
-    if (isQuantumCard(partner) && !partner.observed) {
-      const partnerSide: 0 | 1 = entanglement.mode === 'SAME' ? side : side === 0 ? 1 : 0;
-      observeQuantumCard(partner, allCards, entanglements, partnerSide);
+  const queue: Array<{ id: string; side: 0 | 1 }> = [{ id: card.id, side }];
+  const assigned = new Set<string>();
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (assigned.has(current.id)) continue;
+    assigned.add(current.id);
+
+    const currentCard = quantumById.get(current.id);
+    if (!currentCard) continue;
+
+    if (!currentCard.observed) {
+      currentCard.observed = true;
+      currentCard.chosenSide = current.side;
+      currentCard.result = currentCard.values[current.side];
+    }
+
+    const neighbors = graph.get(current.id) ?? [];
+    for (const neighbor of neighbors) {
+      const nextSide = (current.side ^ neighbor.parity) as 0 | 1;
+      const nextCard = quantumById.get(neighbor.id);
+      if (!nextCard) continue;
+      if (nextCard.observed) continue;
+      queue.push({ id: neighbor.id, side: nextSide });
     }
   }
 }

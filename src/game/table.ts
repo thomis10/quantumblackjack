@@ -233,7 +233,7 @@ export function entangleCards(
   const hand = player.hand.map((c) => ({ ...c }));
   const cardA = hand.find((c) => c.id === cardIdA);
   const cardB = hand.find((c) => c.id === cardIdB);
-  const validation = canEntangle(cardA, cardB, player.entanglements, player.chips);
+  const validation = canEntangle(cardA, cardB, mode, player.entanglements, player.chips);
   if (!validation.ok || !cardA || !cardB || cardA.kind !== 'quantum' || cardB.kind !== 'quantum') {
     return { ...table, message: validation.reason ?? 'Cannot entangle these cards.' };
   }
@@ -349,7 +349,7 @@ export function dealerEntangleCards(
   const hand = table.dealerHand.map((c) => ({ ...c }));
   const cardA = hand.find((c) => c.id === cardIdA);
   const cardB = hand.find((c) => c.id === cardIdB);
-  const validation = canEntangle(cardA, cardB, table.dealerEntanglements, Number.MAX_SAFE_INTEGER);
+  const validation = canEntangle(cardA, cardB, mode, table.dealerEntanglements, Number.MAX_SAFE_INTEGER);
   if (!validation.ok || !cardA || !cardB || cardA.kind !== 'quantum' || cardB.kind !== 'quantum') {
     return { ...table, message: validation.reason ?? 'Cannot entangle these cards.' };
   }

@@ -3,7 +3,7 @@
 
 import type { Card, QuantumCard } from './cards';
 import type { Entanglement } from './quantum';
-import { findEntanglementForCard, findPartnerId, observeQuantumCard } from './quantum';
+import { findEntanglementForCard, observeQuantumCard } from './quantum';
 
 interface ValueEntry {
   value: number;
@@ -71,20 +71,41 @@ function groupUnresolved(
     else if (card.kind === 'quantum') unresolved.push(card);
   }
 
+  const unresolvedById = new Map(unresolved.map((card) => [card.id, card]));
+  const adjacency = new Map<string, string[]>();
+  const addNeighbor = (from: string, to: string): void => {
+    const list = adjacency.get(from);
+    if (list) list.push(to);
+    else adjacency.set(from, [to]);
+  };
+
+  for (const entanglement of entanglements) {
+    if (!unresolvedById.has(entanglement.cardAId) || !unresolvedById.has(entanglement.cardBId)) continue;
+    addNeighbor(entanglement.cardAId, entanglement.cardBId);
+    addNeighbor(entanglement.cardBId, entanglement.cardAId);
+  }
+
   const groups: QuantumCard[][] = [];
   const grouped = new Set<string>();
   for (const card of unresolved) {
     if (grouped.has(card.id)) continue;
-    const entanglement = findEntanglementForCard(entanglements, card.id);
-    const partner = entanglement && unresolved.find((c) => c.id === findPartnerId(entanglement, card.id));
-    if (entanglement && partner) {
-      groups.push([card, partner]);
-      grouped.add(card.id);
-      grouped.add(partner.id);
-    } else {
-      groups.push([card]);
-      grouped.add(card.id);
+
+    const stack = [card.id];
+    const component: QuantumCard[] = [];
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+      if (grouped.has(currentId)) continue;
+      grouped.add(currentId);
+      const currentCard = unresolvedById.get(currentId);
+      if (!currentCard) continue;
+      component.push(currentCard);
+
+      const neighbors = adjacency.get(currentId) ?? [];
+      for (const neighborId of neighbors) {
+        if (!grouped.has(neighborId)) stack.push(neighborId);
+      }
     }
+    groups.push(component);
   }
   return { known, groups };
 }
@@ -99,17 +120,48 @@ function valuesForMask(
   const values = [...known];
   groups.forEach((group, i) => {
     const side = ((mask >> i) & 1) as 0 | 1;
-    if (group.length === 1) {
-      values.push({ value: group[0].values[side], isAce: false });
-    } else {
-      const [a, b] = group;
-      const entanglement = findEntanglementForCard(entanglements, a.id)!;
-      const sideB = entanglement.mode === 'SAME' ? side : side === 0 ? 1 : 0;
-      values.push({ value: a.values[side], isAce: false });
-      values.push({ value: b.values[sideB], isAce: false });
+    const anchor = group[0];
+    for (const card of group) {
+      const relative = card.id === anchor.id ? 0 : findRelativeParity(entanglements, anchor.id, card.id) ?? 0;
+      const cardSide = (side ^ relative) as 0 | 1;
+      values.push({ value: card.values[cardSide], isAce: false });
     }
   });
   return values;
+}
+
+function findRelativeParity(entanglements: Entanglement[], startId: string, targetId: string): 0 | 1 | undefined {
+  if (startId === targetId) return 0;
+
+  const adjacency = new Map<string, Array<{ id: string; parity: 0 | 1 }>>();
+  const addEdge = (from: string, to: string, parity: 0 | 1): void => {
+    const list = adjacency.get(from);
+    if (list) list.push({ id: to, parity });
+    else adjacency.set(from, [{ id: to, parity }]);
+  };
+
+  for (const entanglement of entanglements) {
+    const parity = entanglement.mode === 'SAME' ? 0 : 1;
+    addEdge(entanglement.cardAId, entanglement.cardBId, parity);
+    addEdge(entanglement.cardBId, entanglement.cardAId, parity);
+  }
+
+  const queue: Array<{ id: string; parity: 0 | 1 }> = [{ id: startId, parity: 0 }];
+  const seen = new Set<string>([startId]);
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const neighbors = adjacency.get(current.id) ?? [];
+    for (const neighbor of neighbors) {
+      const nextParity = (current.parity ^ neighbor.parity) as 0 | 1;
+      if (neighbor.id === targetId) return nextParity;
+      if (seen.has(neighbor.id)) continue;
+      seen.add(neighbor.id);
+      queue.push({ id: neighbor.id, parity: nextParity });
+    }
+  }
+
+  return undefined;
 }
 
 /**
