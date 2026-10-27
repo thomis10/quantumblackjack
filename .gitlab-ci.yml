@@ -1,0 +1,17 @@
+
+image: node:22
+
+stages:
+  - deploy
+
+create-pages:
+  stage: deploy
+  tags:
+    - hva
+  script:
+    - npm ci
+    - npm run build
+  pages:
+    publish: dist
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH'
