@@ -3,7 +3,7 @@
 
 import type { Card, QuantumCard } from './cards';
 import type { Entanglement } from './quantum';
-import { findEntanglementForCard, observeQuantumCard } from './quantum';
+import { observeQuantumCard } from './quantum';
 
 interface ValueEntry {
   value: number;
